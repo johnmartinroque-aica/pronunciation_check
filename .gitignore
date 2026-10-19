@@ -1,0 +1,14 @@
+# Virtual environment (recreate with: pip install -r requirements.txt)
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Recordings saved with --save
+take_*.wav
+
+# Editor / tool folders
+.qodo/
+.vscode/

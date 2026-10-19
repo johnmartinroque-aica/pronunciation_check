@@ -1,0 +1,7 @@
+torch
+transformers
+phonemizer
+sounddevice
+soundfile
+numpy
+gradio
