@@ -113,6 +113,22 @@ CSS = """
 
 with gr.Blocks(title="Pronunciation Check") as demo:
     gr.Markdown("# 🎤 Pronunciation Check\nPick or type a sentence, record yourself, then press **Check**.")
+    with gr.Accordion("📋 How to use (first time? read this)", open=True):
+        gr.Markdown(
+            "1. **Choose a sentence** from the list, or type your own.\n"
+            "2. **Click the microphone** 🎙️, then click **Record** "
+            "(allow microphone access if your browser asks).\n"
+            "3. **Read the sentence aloud** clearly at a normal speed.\n"
+            "4. **Click stop** ⏹️ - your result appears automatically "
+            "(or press **Check pronunciation**).\n"
+            "5. **Read your feedback** on the right and try again!\n\n"
+            "**Colors:** each word is colored by how well you said it - "
+            "<span style='color:#16a34a'>green</span> = good (75+), "
+            "<span style='color:#d97706'>orange</span> = close (55-74), "
+            "<span style='color:#dc2626'>red</span> = needs practice (below 55).\n\n"
+            "**Tips:** use a quiet room, keep the mic close, and wait a moment before speaking. "
+            "You can also upload a recording instead of using the mic."
+        )
     with gr.Row():
         with gr.Column():
             sentence = gr.Dropdown(PRACTICE_SENTENCES, value=PRACTICE_SENTENCES[0],
@@ -127,4 +143,5 @@ with gr.Blocks(title="Pronunciation Check") as demo:
     audio.stop_recording(check, [audio, sentence], result)  # auto-check when recording stops
 
 if __name__ == "__main__":
-    demo.launch(inbrowser=True, css=CSS)
+    demo.launch(inbrowser=True, css=CSS, share=True)
+
