@@ -20,11 +20,26 @@ SAMPLE_RATE = 16000
 MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
 
 PRACTICE_SENTENCES = [
-    "The weather is nice today",
-    "She sells seashells by the seashore",
-    "I would like a cup of coffee, please",
-    "Three thin thieves thought a thousand thoughts",
-    "Can you tell me the way to the station",
+    "Rock the lock, then lock the rock.",
+    "The clown wore a crown in the crowd.",
+    "I bet the vet will be back by seven.",
+    "Curb the curve before the next curb.",
+    "She will sip her soup on the ship.",
+    "Sue lost one shoe, so Sue bought a new shoe.",
+    "A bug bit the boy, the boy beat the bug.",
+    "I think the ship will sink, I think.",
+    "Though the dough won't thaw, to the oven it goes.",
+    "Show the proof to prove that you have proof.",
+    "Rory rented what Larry lent.",
+    "Frame the flame before the flame flickers.",
+    "Vote for the boat, then boat to the vote.",
+    "The rebels revel by the river.",
+    "See the water seep near the sleeping sheep.",
+    "The shy girl let out a big sad sigh.",
+    "The sheep will slip, then the sheep will sleep.",
+    "The hen then ran out of the den.",
+    "Watch the sun rise as you eat rice.",
+    "The dog dashed down the dock.",
 ]
 
 # On Windows, phonemizer needs to be told where the eSpeak NG library lives.
