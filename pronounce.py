@@ -5,6 +5,7 @@ Usage:
     python pronounce.py "The weather is nice today"
     python pronounce.py --file recording.wav "The weather is nice today"
     python pronounce.py --list-devices
+    python pronounce.py --scores              # show your score table
 """
 import argparse
 import os
@@ -39,6 +40,7 @@ from phonemizer.separator import Separator  # noqa: E402
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor  # noqa: E402
 
 from phonemes import explain, respell  # noqa: E402
+from scoring import GRADES, ScoreBook, grade  # noqa: E402
 
 # Marks that differ between the model output and espeak but don't change
 # whether a sound was pronounced correctly.
@@ -160,12 +162,13 @@ def assess(proc, model, audio, text):
     r = analyze(proc, model, audio, text)
     if r is None:
         print("  Didn't catch that - recording was too short or too quiet.\n")
-        return
+        return None
 
     score = r["score"]
+    g = grade(score)
     print(f"\n  Expected: {respell(r['expected'])}")
     print(f"  Heard:    {respell(r['spoken'])}")
-    print(f"\n  Overall score: {score:.0f}/100  {verdict(score)}\n")
+    print(f"\n  Overall score: {score:.0f}/100  Grade {g.letter} - {g.verdict}\n")
 
     print("  Per word:")
     for word, phones, ws in r["words"]:
@@ -180,16 +183,43 @@ def assess(proc, model, audio, text):
                 if tip:
                     print(f"      Tip: {tip}")
     print()
+    return r
 
 
 def verdict(score):
-    if score >= 90:
-        return "Excellent!"
-    if score >= 75:
-        return "Good"
-    if score >= 55:
-        return "Needs some work"
-    return "Try again"
+    return grade(score).verdict
+
+
+def record_score(book, sentence, r):
+    if r is None:
+        return
+    new_best = book.add(sentence, r)
+    sc = book.scores(sentence)
+    line = f"  Attempt {len(sc)} on this sentence | best {max(sc):.0f} | average {sum(sc) / len(sc):.0f}"
+    print(line + ("  *** New personal best! ***" if new_best else "") + "\n")
+
+
+def print_score_table(book):
+    rows = book.table()
+    if not rows:
+        print("No scores yet - practise a sentence first.")
+        return
+    print(f"\n  {'Sentence':<42} {'Tries':>5} {'Best':>5} {'Avg':>5} {'Last':>5} {'Trend':>6}  Grade")
+    print("  " + "-" * 79)
+    for row in rows:
+        s = row["sentence"] if len(row["sentence"]) <= 42 else row["sentence"][:39] + "..."
+        trend = f"{row['trend']:+.0f}" if row["tries"] > 1 else "-"
+        print(f"  {s:<42} {row['tries']:>5} {row['best']:>5.0f} {row['average']:>5.0f}"
+              f" {row['last']:>5.0f} {trend:>6}  {grade(row['best']).letter}")
+    t = book.totals()
+    print(f"\n  Overall: {t['tries']} attempts, average {t['average']:.0f}, best {t['best']:.0f}")
+    weak = book.weak_words()
+    if weak:
+        print("  Words to practise: " + ", ".join(f"{w} ({s:.0f}%)" for w, s in weak))
+    print("\n  Grading scale:")
+    for g in GRADES:
+        print(f"    {g.letter}  {g.min:>3}+  {g.verdict:<16} {g.meaning}")
+    print()
 
 
 def main():
@@ -199,16 +229,28 @@ def main():
     ap.add_argument("--device", type=int, help="input device index (see --list-devices)")
     ap.add_argument("--save", action="store_true", help="save each take as take_N.wav")
     ap.add_argument("--list-devices", action="store_true")
+    ap.add_argument("--scores", action="store_true", help="show your score table and exit")
+    ap.add_argument("--reset-scores", action="store_true", help="delete your score history")
     args = ap.parse_args()
 
     if args.list_devices:
         print(sd.query_devices())
         return
 
+    book = ScoreBook()
+    if args.reset_scores:
+        book.reset()
+        print("Score history cleared.")
+        return
+    if args.scores:
+        print_score_table(book)
+        return
+
     proc, model = load_model()
 
     if args.file:
-        assess(proc, model, load_wav(args.file), args.text or PRACTICE_SENTENCES[0])
+        text = args.text or PRACTICE_SENTENCES[0]
+        record_score(book, text, assess(proc, model, load_wav(args.file), text))
         return
 
     sentences = [args.text] if args.text else PRACTICE_SENTENCES
@@ -222,16 +264,21 @@ def main():
             take += 1
             if args.save:
                 sf.write(f"take_{take}.wav", audio, SAMPLE_RATE)
-            assess(proc, model, audio, sentence)
-            choice = input("[r]etry, [n]ext, [c]ustom sentence, [q]uit? ").strip().lower()
+            record_score(book, sentence, assess(proc, model, audio, sentence))
+            choice = input("[r]etry, [n]ext, [c]ustom sentence, [s]cores, [q]uit? ").strip().lower()
+            if choice == "s":
+                print_score_table(book)
+                choice = input("[r]etry, [n]ext, [c]ustom sentence, [q]uit? ").strip().lower()
             if choice == "r":
                 continue
             if choice == "c":
                 sentence = input("Type your sentence: ").strip() or sentence
                 continue
             if choice == "q":
+                print_score_table(book)
                 return
             break
+    print_score_table(book)
     print("Done - nice practice!")
 
 
