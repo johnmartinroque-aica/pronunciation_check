@@ -9,10 +9,6 @@ __pycache__/
 # Recordings saved with --save
 take_*.wav
 
-# Personal score history
-scores.json
-scores.json.tmp
-
 # Editor / tool folders
 .qodo/
 .vscode/

@@ -9,11 +9,9 @@ import numpy as np
 
 from phonemes import explain, lookup, respell
 from pronounce import PRACTICE_SENTENCES, SAMPLE_RATE, analyze, load_model
-from scoring import GRADES, ScoreBook, grade
+from scoring import grade
 
 PROC, MODEL = load_model()
-BOOK = ScoreBook()
-_last_take = None  # (sentence, audio hash) so Check after auto-check isn't counted twice
 
 
 def to_mono_16k(audio):
@@ -36,7 +34,7 @@ def color(score):
     return grade(score).color
 
 
-def render(r, new_best=False):
+def render(r):
     score = r["score"]
     g = grade(score)
     c = g.color
@@ -65,7 +63,6 @@ def render(r, new_best=False):
 <div class="pc-result">
   <div class="pc-score" style="color:{c}">{score:.0f}<span>/100</span></div>
   <div class="pc-verdict" style="color:{c}">Grade {g.letter} - {g.verdict}</div>
-  {'<div class="pc-best">🏆 New personal best!</div>' if new_best else ''}
   <div class="pc-words">{words}</div>
   <table class="pc-phones">
     <tr><th>Should sound like</th><td>{html.escape(respell(r["expected"]))}</td></tr>
@@ -78,62 +75,16 @@ def render(r, new_best=False):
 </div>"""
 
 
-def render_scores():
-    scale = "".join(
-        f'<tr><td style="color:{g.color}"><b>{g.letter}</b></td><td>{g.min}+</td>'
-        f"<td>{html.escape(g.verdict)}</td><td>{html.escape(g.meaning)}</td></tr>"
-        for g in GRADES
-    )
-    scale = (f'<h4>Grading scale</h4><table class="pc-table"><tr><th>Grade</th><th>Score</th>'
-             f"<th>Verdict</th><th>Meaning</th></tr>{scale}</table>")
-    rows = BOOK.table()
-    if not rows:
-        return "<p class='pc-msg'>No scores yet - your attempts will be listed here.</p>" + scale
-
-    body = "".join(
-        f"<tr><td class='pc-sent'>{html.escape(row['sentence'])}</td><td>{row['tries']}</td>"
-        f"<td style='color:{color(row['best'])}'><b>{row['best']:.0f}</b> {grade(row['best']).letter}</td>"
-        f"<td>{row['average']:.0f}</td><td>{row['last']:.0f}</td>"
-        f"<td>{format(row['trend'], '+.0f') if row['tries'] > 1 else '-'}</td></tr>"
-        for row in rows
-    )
-    t = BOOK.totals()
-    weak = BOOK.weak_words()
-    weak_html = ("<p><b>Words to practise:</b> " + ", ".join(
-        f"<span style='color:{color(s)}'>{html.escape(w)} ({s:.0f}%)</span>" for w, s in weak) + "</p>"
-        if weak else "")
-    return f"""
-<table class="pc-table">
-  <tr><th>Sentence</th><th>Tries</th><th>Best</th><th>Average</th><th>Last</th><th>Trend</th></tr>
-  {body}
-</table>
-<p><b>Overall:</b> {t['tries']} attempts, average {t['average']:.0f}, best {t['best']:.0f}</p>
-{weak_html}{scale}"""
-
-
 def check(audio, sentence):
-    global _last_take
     sentence = (sentence or "").strip()
     if not sentence:
-        return "<p class='pc-msg'>Type or pick a sentence first.</p>", render_scores()
+        return "<p class='pc-msg'>Type or pick a sentence first.</p>"
     if audio is None:
-        return "<p class='pc-msg'>Record yourself first (click the microphone).</p>", render_scores()
-    data = to_mono_16k(audio)
-    r = analyze(PROC, MODEL, data, sentence)
+        return "<p class='pc-msg'>Record yourself first (click the microphone).</p>"
+    r = analyze(PROC, MODEL, to_mono_16k(audio), sentence)
     if r is None:
-        return ("<p class='pc-msg'>Didn't catch that - the recording was too short or too quiet.</p>",
-                render_scores())
-    take = (sentence, hash(data.tobytes()))
-    new_best = False
-    if take != _last_take:
-        _last_take = take
-        new_best = BOOK.add(sentence, r)
-    return render(r, new_best), render_scores()
-
-
-def reset_scores():
-    BOOK.reset()
-    return render_scores()
+        return "<p class='pc-msg'>Didn't catch that - the recording was too short or too quiet.</p>"
+    return render(r)
 
 
 CSS = """
@@ -158,11 +109,6 @@ CSS = """
 .pc-guide table { margin-top:8px; }
 .pc-guide td:first-child { font-size:18px; text-align:center; }
 .pc-msg { text-align:center; padding:24px; opacity:.8; }
-.pc-best { font-size:18px; font-weight:600; margin:-8px 0 16px; }
-.pc-table { width:100%; border-collapse:collapse; margin-bottom:12px; }
-.pc-table th, .pc-table td { padding:6px 10px; text-align:center; }
-.pc-table th { opacity:.7; font-weight:600; }
-.pc-table td.pc-sent { text-align:left; }
 """
 
 with gr.Blocks(title="Pronunciation Check") as demo:
@@ -176,14 +122,9 @@ with gr.Blocks(title="Pronunciation Check") as demo:
             btn = gr.Button("Check pronunciation", variant="primary")
         with gr.Column():
             result = gr.HTML("<p class='pc-msg'>Your results will appear here.</p>")
-    with gr.Accordion("📊 Score table", open=True):
-        scores = gr.HTML(render_scores())
-        reset = gr.Button("Reset score history", size="sm", variant="stop")
 
-    btn.click(check, [audio, sentence], [result, scores])
-    audio.stop_recording(check, [audio, sentence], [result, scores])  # auto-check when recording stops
-    reset.click(reset_scores, None, scores)
-    demo.load(render_scores, None, scores)  # fresh table on page reload
+    btn.click(check, [audio, sentence], result)
+    audio.stop_recording(check, [audio, sentence], result)  # auto-check when recording stops
 
 if __name__ == "__main__":
     demo.launch(inbrowser=True, css=CSS)

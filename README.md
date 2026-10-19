@@ -70,12 +70,11 @@ python pronounce.py --save                            # keep each take as take_N
 ```
 
 Flow: press **Enter**, speak, press **Enter** again. You'll then see the
-result and can choose **r**etry, **n**ext, **c**ustom sentence, **s**cores or **q**uit.
+result and can choose **r**etry, **n**ext, **c**ustom sentence or **q**uit.
 
 ### Scoring
 
-Every attempt gets a grade and is saved to `scores.json`, so you can track
-progress between sessions.
+Every attempt gets a grade:
 
 | Grade | Score | Verdict | Meaning |
 |---|---|---|---|
@@ -83,15 +82,6 @@ progress between sessions.
 | B | 75+ | Good | Easy to understand; a few sounds slightly off. |
 | C | 55+ | Needs some work | Understandable, but several sounds wrong or missing. |
 | D | 0+ | Try again | Hard to understand; many sounds wrong or missing. |
-
-The score table lists, per sentence: tries, best, average, last score and
-trend (last minus first), plus your overall average and the words you score
-lowest on. See it in the web UI under **Score table**, or from the terminal:
-
-```powershell
-python pronounce.py --scores          # show the table
-python pronounce.py --reset-scores    # start over
-```
 
 The bands are defined in `GRADES` in `scoring.py`; edit them there.
 
